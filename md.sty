@@ -1,0 +1,77 @@
+\RequirePackage{expl3}
+\ProvidesExplPackage
+    {md}{2017/10/10}{0.1}{Markdown in TeX}
+
+\RequirePackage{xparse}
+\RequirePackage{environ}
+
+\cs_new:Npn \inside_para:n #1 {
+  \tl_if_head_eq_meaning:nNTF { #1 } { \relax }
+     {
+     }
+     {
+       \exp_args:Nff \inside_line:Nn { } { #1 }
+     }
+}
+
+\cs_new:Npn \inside_line:Nn #1#2 {
+  % #1: so far string in this line
+  % #2: input stream
+  \tl_set:Nn \car_line { \tl_head:n { #2 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #2 } { ` }
+     {
+       #1%
+       \exp_args:Nff \inside_tt:Nn { } \cdr_line
+     }
+     {
+       \tl_if_head_eq_meaning:nNTF { #2 } { \par }
+          {
+            \tl_if_empty:nTF { #1 }
+               {
+                 \par \exp_args:Nf \inside_para:n { \cdr_line }
+               }
+               {
+                 #1%
+                 \exp_args:Nf \inside_para:n { \cdr_line }
+               }
+          }
+          {
+            \tl_set:Nx \so_far { #1\car_line }
+            \exp_args:Nff \inside_line:Nn { \so_far } { \cdr_line }
+          }
+     }
+}
+
+\cs_new:Npn \inside_tt:Nn #1#2 {
+  \tl_set:Nn \car_line { \tl_head:n { #2 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #2 } { ` }
+     {
+       \texttt{#1}%
+       \exp_args:Nff \inside_line:Nn { } { \cdr_line }
+     }
+     {
+       \tl_set:Nx \so_far { #1\car_line }
+       \exp_args:Nff \inside_tt:Nn { \so_far } { \cdr_line }
+     }
+}
+
+\NewEnviron{parse_markdown}{
+  \exp_args:Nf \inside_para:n {
+    \BODY
+    \relax
+  }
+}
+
+\NewDocumentEnvironment{markdown}{ }{%
+  \obeylines%
+  \parse_markdown%
+}{%
+  \endparse_markdown%
+}
+
+\def\endofmarkdown{\relax}
+
