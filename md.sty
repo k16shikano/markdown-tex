@@ -5,57 +5,102 @@
 \RequirePackage{xparse}
 \RequirePackage{environ}
 
+\cs_set_nopar:Npn \exp_args:NNf { \::N \::f \::: }
+\cs_set_nopar:Npn \exp_args:NNff { \::N \::f \::f \::: }
+\cs_set_nopar:Npn \exp_args:NNNff { \::N \::N \::f \::f \::: }
+\cs_set_nopar:Npn \exp_args:NNNNff { \::N \::N \::N \::f \::f \::: }
+
 \cs_new:Npn \inside_para:n #1 {
   \tl_if_head_eq_meaning:nNTF { #1 } { \relax }
+     { }
      {
-     }
-     {
-       \exp_args:Nff \inside_line:Nn { } { #1 }
-     }
-}
-
-\cs_new:Npn \inside_line:Nn #1#2 {
-  % #1: so far string in this line
-  % #2: input stream
-  \tl_set:Nn \car_line { \tl_head:n { #2 } }
-  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
-  
-  \tl_if_head_eq_charcode:nNTF { #2 } { ` }
-     {
-       #1%
-       \exp_args:Nff \inside_tt:Nn { } \cdr_line
-     }
-     {
-       \tl_if_head_eq_meaning:nNTF { #2 } { \par }
+       \tl_if_head_eq_charcode:nNTF { #1 } { * }
           {
-            \tl_if_empty:nTF { #1 }
-               {
-                 \par \exp_args:Nf \inside_para:n { \cdr_line }
-               }
-               {
-                 #1%
-                 \exp_args:Nf \inside_para:n { \cdr_line }
-               }
+            ＞＞＞
+            \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \tl_tail:n { #1 } }
           }
           {
-            \tl_set:Nx \so_far { #1\car_line }
-            \exp_args:Nff \inside_line:Nn { \so_far } { \cdr_line }
+            \inside_line:n { #1 }
           }
      }
 }
 
-\cs_new:Npn \inside_tt:Nn #1#2 {
-  \tl_set:Nn \car_line { \tl_head:n { #2 } }
-  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
-  
-  \tl_if_head_eq_charcode:nNTF { #2 } { ` }
+\cs_new:Npn \inside_itemize:n #1 {
+  \tl_set:Nn \car_line { \tl_head:n { #1 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #1 } }
+
+  \tl_if_head_eq_meaning:nNTF { #1 } { \relax }
+     { }
+     { \tl_if_head_eq_charcode:nNTF { #1 } { * }
+       {
+         \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \cdr_line }
+       }
+       {
+         \tl_if_head_eq_meaning:nNTF { #1 } { \par }
+            {
+              ＜＜＜
+              \exp_args:Nf \inside_para:n { \cdr_line }
+              
+            }
+            {
+              \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \cdr_line }
+            }
+       }
+     }
+}
+         
+\cs_new:Npn \inside_line:n #1 {
+  \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_para:n } {  } { #1 }
+}
+
+\cs_new:Npn \inside_item:n #1 {
+  \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } {  } { #1 }
+}
+
+\cs_new:Npn \parse_to_end_line_with:Nnn #1#2#3 {
+  % #1: processor for the next line
+  % #2: so far string in this line
+  % #3: input stream
+  \tl_set:Nn \car_line { \tl_head:n { #3 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
+
+  \tl_if_head_eq_meaning:nNTF { #3 } { \par }
      {
-       \texttt{#1}%
-       \exp_args:Nff \inside_line:Nn { } { \cdr_line }
+       \tl_if_empty:nTF { #2 }
+          {
+            \par
+            \exp_args:Nf \inside_para:n { \cdr_line }
+          }
+          {
+            #2
+            \exp_args:Nf #1 { \cdr_line }
+         }
      }
      {
-       \tl_set:Nx \so_far { #1\car_line }
-       \exp_args:Nff \inside_tt:Nn { \so_far } { \cdr_line }
+       \tl_if_head_eq_charcode:nNTF { #3 } { ` }
+          {
+            #2%
+            \exp_args:NNff \inside_tt:Nnn #1 { } \cdr_line
+          }
+          {
+            \tl_set:Nx \so_far { #2\car_line }
+            \exp_args:NNff \parse_to_end_line_with:Nnn { #1 } { \so_far } { \cdr_line }
+          }
+     }
+}
+
+\cs_new:Npn \inside_tt:Nnn #1#2#3 {
+  \tl_set:Nn \car_line { \tl_head:n { #3 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #3 } { ` }
+     {
+       \texttt{#2}%
+       \exp_args:NNff \parse_to_end_line_with:Nnn { #1 } { } { \cdr_line }
+     }
+     {
+       \tl_set:Nx \so_far { #2\car_line }
+       \exp_args:NNff \inside_tt:Nnn { #1 } { \so_far } { \cdr_line }
      }
 }
 
