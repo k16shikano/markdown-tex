@@ -2,113 +2,186 @@
 \ProvidesExplPackage
     {md}{2017/10/10}{0.1}{Markdown in TeX}
 
+\RequirePackage{l3regex}
 \RequirePackage{xparse}
 \RequirePackage{environ}
 
-\cs_set_nopar:Npn \exp_args:NNf { \::N \::f \::: }
-\cs_set_nopar:Npn \exp_args:NNff { \::N \::f \::f \::: }
-\cs_set_nopar:Npn \exp_args:NNNff { \::N \::N \::f \::f \::: }
-\cs_set_nopar:Npn \exp_args:NNNNff { \::N \::N \::N \::f \::f \::: }
+\cs_set_nopar:Npn \exp_args:Nnf { \::n \::f \::: }
+\cs_set_nopar:Npn \exp_args:NNnff { \::N \::n \::f \::f \::: }
 
-\cs_new:Npn \inside_para:n #1 {
-  \tl_if_head_eq_meaning:nNTF { #1 } { \relax }
+\regex_new:N \begin_enumerate
+\regex_gset:Nn \begin_enumerate { ^\d+\.\s }
+
+\cs_new:Npn \inside_para:nn #1#2 {
+  \tl_set:Nn \car_line { \tl_head:n { #2 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
+
+  \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
      { }
      {
-       \tl_if_head_eq_charcode:nNTF { #1 } { * }
+       \tl_if_head_eq_meaning:nNTF { #2 } { \par }
           {
-            ＞＞＞
-            \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \tl_tail:n { #1 } }
+            \tl_put_right:Nx #1 { \par }
+            \exp_args:Nnx \inside_para:nn #1 { \cdr_line }
           }
           {
-            \inside_line:n { #1 }
+            \tl_if_head_eq_charcode:nNTF { #2 } { * }
+               {
+                 \tl_put_right:Nn #1 { \begin{itemize}\item }
+                 \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                     { \inside_itemize:nn }
+                     { #1 }
+                     {  }
+                     { \cdr_line }
+               }
+               {
+                 \regex_match:NnTF \begin_enumerate { #2 }
+                    {
+                      \tl_put_right:Nn #1 { \begin{enumerate}\item }
+                      \tl_set:Nn \l_rest_line { #2 }
+                      \regex_replace_once:NnN \begin_enumerate { } \l_rest_line
+                      \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                          { \inside_enumerate:nn }
+                          { #1 }
+                          {  }
+                          { \l_rest_line }
+                    }
+                    {                 
+                      \tl_put_right:Nx #1 { \car_line }
+                      \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                          { \inside_para:nn }
+                          { #1 }
+                          {  }
+                          { \cdr_line }
+                    }
+               }
           }
      }
 }
 
-\cs_new:Npn \inside_itemize:n #1 {
-  \tl_set:Nn \car_line { \tl_head:n { #1 } }
-  \tl_set:Nn \cdr_line { \tl_tail:n { #1 } }
+\cs_new:Npn \inside_itemize:nn #1#2 {
+  \tl_set:Nn \car_line { \tl_head:n { #2 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
 
-  \tl_if_head_eq_meaning:nNTF { #1 } { \relax }
+  \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
      { }
-     { \tl_if_head_eq_charcode:nNTF { #1 } { * }
+     { \tl_if_head_eq_charcode:nNTF { #2 } { * }
        {
-         \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \cdr_line }
+         \tl_put_right:Nn #1 { \item }
+         \exp_args:NNnff \parse_to_end_line_with:Nnnn { \inside_itemize:nn } { #1 } { } { \cdr_line }
        }
        {
-         \tl_if_head_eq_meaning:nNTF { #1 } { \par }
+         \tl_if_head_eq_meaning:nNTF { #2 } { \par }
             {
-              ＜＜＜
-              \exp_args:Nf \inside_para:n { \cdr_line }
-              
+              \tl_put_right:Nn #1 { \end{itemize} }
+              \exp_args:Nnx \inside_para:nn { #1 } { \cdr_line }
             }
             {
-              \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } { } { \cdr_line }
+              \exp_args:NNnff \parse_to_end_line_with:Nnnn { \inside_itemize:nn } { #1 } { } { \cdr_line }
             }
        }
      }
 }
-         
-\cs_new:Npn \inside_line:n #1 {
-  \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_para:n } {  } { #1 }
+
+\cs_new:Npn \inside_enumerate:nn #1#2 {
+  \tl_set:Nn \car_line { \tl_head:n { #2 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
+
+  \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
+     { }
+     {
+       \regex_match:NnTF \begin_enumerate { #2 }
+             {
+               \tl_put_right:Nn #1 { \item }
+               \tl_set:Nn \l_rest_line { #2 }
+               \regex_replace_once:NnN \begin_enumerate { } \l_rest_line
+               \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                   { \inside_enumerate:nn }
+                   { #1 }
+                   { }
+                   { \l_rest_line }
+             }
+             {
+               \tl_if_head_eq_meaning:nNTF { #2 } { \par }
+                  {
+                    \tl_put_right:Nn #1 { \end{enumerate} }
+                    \exp_args:Nnx \inside_para:nn { #1 } { \cdr_line }
+                  }
+                  {
+                    \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                        { \inside_enumerate:nn } { #1 } { } { \cdr_line }
+                  }
+             }
+     }
 }
 
-\cs_new:Npn \inside_item:n #1 {
-  \exp_args:NNff \parse_to_end_line_with:Nnn { \inside_itemize:n } {  } { #1 }
-}
 
-\cs_new:Npn \parse_to_end_line_with:Nnn #1#2#3 {
+\cs_new:Npn \parse_to_end_line_with:Nnnn #1#2#3#4 {
   % #1: processor for the next line
-  % #2: so far string in this line
-  % #3: input stream
-  \tl_set:Nn \car_line { \tl_head:n { #3 } }
-  \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
+  % #2: token list of parsed tokens
+  % #3: so far string in this line
+  % #4: input stream
+  \tl_set:Nn \car_line { \tl_head:n { #4 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
 
-  \tl_if_head_eq_meaning:nNTF { #3 } { \par }
+  \tl_if_head_eq_meaning:nNTF { #4 } { \par }
      {
-       \tl_if_empty:nTF { #2 }
+       \tl_if_empty:nTF { #3 }
           {
-            \par
-            \exp_args:Nf \inside_para:n { \cdr_line }
+            \tl_put_right:Nn #2 { \par }
+            \exp_args:Nnx \inside_para:nn { #2 } { \cdr_line }
           }
           {
-            #2
-            \exp_args:Nf #1 { \cdr_line }
-         }
+            \tl_put_right:Nn #2 { #3 }
+            \exp_args:Nnx #1 #2 { \cdr_line }
+          }
      }
      {
-       \tl_if_head_eq_charcode:nNTF { #3 } { ` }
+       \tl_if_head_eq_charcode:nNTF { #4 } { ` }
           {
-            #2%
-            \exp_args:NNff \inside_tt:Nnn #1 { } \cdr_line
+            \tl_put_right:Nn #2 { #3 }
+            \exp_args:NNnff \inside_tt:Nnnn #1 #2 { } { \cdr_line }
           }
           {
-            \tl_set:Nx \so_far { #2\car_line }
-            \exp_args:NNff \parse_to_end_line_with:Nnn { #1 } { \so_far } { \cdr_line }
+            \tl_if_head_eq_charcode:nNTF { #4 } { ~ }
+               {
+                 \tl_show:N \cdr_line
+                 \tl_set:Nx \so_far { #3{~} }
+                 \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+               }
+               {
+                 \tl_set:Nx \so_far { #3\car_line }
+                 \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+               }
           }
      }
 }
 
-\cs_new:Npn \inside_tt:Nnn #1#2#3 {
-  \tl_set:Nn \car_line { \tl_head:n { #3 } }
-  \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
+\cs_new:Npn \inside_tt:Nnnn #1#2#3#4 {
+  \tl_set:Nn \car_line { \tl_head:n { #4 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
   
-  \tl_if_head_eq_charcode:nNTF { #3 } { ` }
+  \tl_if_head_eq_charcode:nNTF { #4 } { ` }
      {
-       \texttt{#2}%
-       \exp_args:NNff \parse_to_end_line_with:Nnn { #1 } { } { \cdr_line }
+       \tl_put_right:Nn #2 { \texttt{ #3 } }
+       \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { } { \cdr_line }
      }
      {
-       \tl_set:Nx \so_far { #2\car_line }
-       \exp_args:NNff \inside_tt:Nnn { #1 } { \so_far } { \cdr_line }
+       \tl_set:Nx \so_far { #3\car_line }
+       \exp_args:NNnff \inside_tt:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
      }
 }
 
 \NewEnviron{parse_markdown}{
-  \exp_args:Nf \inside_para:n {
-    \BODY
+  \tl_new:N \md_result
+  \tl_new:N \md_tokens
+  \tl_gset_rescan:Nnx \md_tokens { \char_set_catcode_letter:n {32} } { \BODY }
+  \tl_show:N \md_tokens
+  \exp_args:Nnx \inside_para:nn \md_result {
+    \md_tokens
     \relax
   }
+  \tl_use:N \md_result
 }
 
 \NewDocumentEnvironment{markdown}{ }{%
