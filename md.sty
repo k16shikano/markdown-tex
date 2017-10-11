@@ -5,6 +5,7 @@
 \RequirePackage{l3regex}
 \RequirePackage{xparse}
 \RequirePackage{environ}
+\RequirePackage{alltt}
 
 \cs_set_nopar:Npn \exp_args:Nnf { \::n \::f \::: }
 \cs_set_nopar:Npn \exp_args:NNnf { \::N \::n \::f \::: }
@@ -406,5 +407,8 @@
   \endparse_markdown%
 }
 
-\def\endofmarkdown{\relax}
+\def\sectionline#1\par{\section{#1}}
+\def\subsectionline#1\par{\subsection{#1}}
+\def\subsubsectionline#1\par{\subsubsection{#1}}
+
 
