@@ -143,15 +143,28 @@
             \exp_args:NNnff \inside_tt:Nnnn #1 #2 { } { \cdr_line }
           }
           {
-            \tl_if_head_eq_charcode:nNTF { #4 } { ~ }
+            \tl_if_head_eq_charcode:nNTF { #4 } { * }
                {
-                 \tl_show:N \cdr_line
-                 \tl_set:Nx \so_far { #3{~} }
-                 \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                 \tl_put_right:Nn #2 { #3 }                 
+                 \tl_if_head_eq_charcode:fNTF { \cdr_line } { * }
+                    {
+                      \exp_args:NNnff \inside_bold:Nnnn #1 #2 { } { \exp_args:Nf \tl_tail:N \cdr_line }
+                    }
+                    {
+                      \exp_args:NNnff \inside_emph:Nnnn #1 #2 { } { \cdr_line }
+                    }
                }
                {
-                 \tl_set:Nx \so_far { #3\car_line }
-                 \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                 \tl_if_head_eq_charcode:nNTF { #4 } { ~ }
+                    {
+                      \tl_set:Nx \so_far { #3{~} }
+                      \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                    }
+                    {
+                      \tl_set:Nx \so_far { #3\car_line }
+                      \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                    }
+
                }
           }
      }
@@ -172,11 +185,41 @@
      }
 }
 
+\cs_new:Npn \inside_emph:Nnnn #1#2#3#4 {
+  \tl_set:Nn \car_line { \tl_head:n { #4 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #4 } { * }
+     {
+       \tl_put_right:Nn #2 { \emph{ #3 } }
+       \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { } { \cdr_line }
+     }
+     {
+       \tl_set:Nx \so_far { #3\car_line }
+       \exp_args:NNnff \inside_emph:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+     }
+}
+
+\cs_new:Npn \inside_bold:Nnnn #1#2#3#4 {
+  \tl_set:Nn \car_line { \tl_head:n { #4 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #4 } { * }
+     {
+       \tl_put_right:Nn #2 { \textbf{ #3 } }
+       \exp_args:NNnff \parse_to_end_line_with:Nnnn
+           { #1 } { #2 } { } { \exp_args:Nf \tl_tail:N \cdr_line }
+     }
+     {
+       \tl_set:Nx \so_far { #3\car_line }
+       \exp_args:NNnff \inside_bold:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+     }
+}
+
 \NewEnviron{parse_markdown}{
   \tl_new:N \md_result
   \tl_new:N \md_tokens
   \tl_gset_rescan:Nnx \md_tokens { \char_set_catcode_letter:n {32} } { \BODY }
-  \tl_show:N \md_tokens
   \exp_args:Nnx \inside_para:nn \md_result {
     \md_tokens
     \relax
