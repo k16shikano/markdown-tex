@@ -58,6 +58,6 @@ Here is the end of markdown text.
 
 ## restriction
 
-You can not use \, {, and } in the markdown environment. (awuful)
+You can not use \, {, and } in the markdown environment. (awful)
 
 
