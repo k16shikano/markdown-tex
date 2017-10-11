@@ -7,6 +7,7 @@
 \RequirePackage{environ}
 
 \cs_set_nopar:Npn \exp_args:Nnf { \::n \::f \::: }
+\cs_set_nopar:Npn \exp_args:NNnf { \::N \::n \::f \::: }
 \cs_set_nopar:Npn \exp_args:NNnff { \::N \::n \::f \::f \::: }
 
 \regex_new:N \begin_enumerate
@@ -14,6 +15,11 @@
 
 \regex_new:N \begin_verbatim
 \regex_gset:Nn \begin_verbatim { ^[\s]{4} }
+
+\regex_new:N \begin_title
+\regex_gset:Nn \begin_title { ^[#] }
+
+\int_new:N \l_nest_level
 
 \cs_new:Npn \inside_para:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
@@ -28,62 +34,103 @@
             \exp_args:Nnx \inside_para:nn #1 { \cdr_line }
           }
           {
-            \tl_if_head_eq_charcode:nNTF { #2 } { * }
+            \regex_match:NnTF \begin_title { #2 }
                {
-                 \tl_put_right:Nn #1 { \begin{itemize}\item }
-                 \exp_args:NNnff \parse_to_end_line_with:Nnnn
-                     { \inside_itemize:nn }
-                     { #1 }
-                     {  }
-                     { \cdr_line }
+                 \int_set:Nn \l_nest_level { 1 }
+                 \exp_args:NNnf \inside_title:Nnn \l_nest_level { #1 } { \cdr_line }
                }
+               
                {
-                 \regex_match:NnTF \begin_enumerate { #2 }
+                 \tl_if_head_eq_charcode:nNTF { #2 } { * }
                     {
-                      \tl_put_right:Nn #1 { \begin{enumerate}\item }
-                      \tl_set:Nn \l_rest_line { #2 }
-                      \regex_replace_once:NnN \begin_enumerate { } \l_rest_line
+                      \tl_put_right:Nn #1 { \begin{itemize}\item }
                       \exp_args:NNnff \parse_to_end_line_with:Nnnn
-                          { \inside_enumerate:nn }
+                          { \inside_itemize:nn }
                           { #1 }
                           {  }
-                          { \l_rest_line }
+                          { \cdr_line }
                     }
                     {
-                      \tl_if_head_eq_charcode:nNTF { #2 } { > }
+                      \regex_match:NnTF \begin_enumerate { #2 }
                         {
-                          \tl_put_right:Nn #1 { \begin{quote} }
-                          \exp_args:NNnff \parse_to_end_line_with:Nnnn
-                              { \inside_quote:nn }
-                              { #1 }
-                              {  }
-                              { \cdr_line }
+                          \tl_put_right:Nn #1 { \begin{enumerate}\item }
+                          \tl_set:Nn \l_rest_line { #2 }
+                          \regex_replace_once:NnN \begin_enumerate { } \l_rest_line
+                            \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                                { \inside_enumerate:nn }
+                                { #1 }
+                                {  }
+                                { \l_rest_line }
                         }
                         {
-                          \regex_match:NnTF \begin_verbatim { #2 }
-                            {
-                              \tl_put_right:Nn #1 { \begin{alltt} }
-                              \tl_set:Nn \l_rest_line { #2 }
-                              \regex_replace_once:NnN \begin_verbatim { } \l_rest_line
-                                \exp_args:NNnff \parse_verb_line:Nnnn
-                                    { \inside_verbatim:nn }
-                                    { #1 }
-                                    {  }
-                                    { \l_rest_line }
-                            }
-                            {
-                              \tl_put_right:Nx #1 { \car_line }
-                              \exp_args:NNnff \parse_to_end_line_with:Nnnn
-                                  { \inside_para:nn }
-                                  { #1 }
-                                  {  }
-                                  { \cdr_line }
-                            }
+                          \tl_if_head_eq_charcode:nNTF { #2 } { > }
+                             {
+                               \tl_put_right:Nn #1 { \begin{quote} }
+                               \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                                   { \inside_quote:nn }
+                                   { #1 }
+                                   {  }
+                                   { \cdr_line }
+                             }
+                             {
+                               \regex_match:NnTF \begin_verbatim { #2 }
+                                 {
+                                   \tl_put_right:Nn #1 { \begin{alltt} }
+                                   \tl_set:Nn \l_rest_line { #2 }
+                                   \regex_replace_once:NnN \begin_verbatim { } \l_rest_line
+                                     \exp_args:NNnff \parse_verb_line:Nnnn
+                                         { \inside_verbatim:nn }
+                                         { #1 }
+                                         {  }
+                                         { \l_rest_line }
+                                 }
+                                 {
+                                   \tl_put_right:Nx #1 { \car_line }
+                                   \exp_args:NNnff \parse_to_end_line_with:Nnnn
+                                       { \inside_para:nn }
+                                       { #1 }
+                                       {  }
+                                       { \cdr_line }
+                                 }
+                             }
                         }
                     }
                }
           }
      }
+}
+
+
+\cs_new:Npn \inside_title:Nnn #1#2#3 {
+  % #1: nest level
+  % #2: result
+
+  \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
+
+  \regex_match:NnTF \begin_title { #3 }
+     {
+       \int_incr:N #1
+       \exp_args:NNnf \inside_title:Nnn { #1 } { #2 } { \cdr_line }
+     }
+     {
+       \int_case:nn { #1 }
+           {
+             { 1 } { \tl_put_right:Nn #2 { \sectionline } }
+             { 2 } { \tl_put_right:Nn #2 { \subsectionline } }
+             { 3 } { \tl_put_right:Nn #2 { \subsubsectionline } }
+           }
+       \exp_args:NNnff \parse_to_end_line_with:Nnnn
+               { \end_of_title:nn }
+               { #2 }
+               { }
+               { #3 }
+     }
+}
+
+\cs_new:Npn \end_of_title:nn #1#2 {
+  \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
+  \tl_put_right:Nn #1 { \par }
+  \exp_args:Nnx \inside_para:nn { #1 } { \cdr_line }
 }
 
 \cs_new:Npn \inside_itemize:nn #1#2 {
@@ -339,7 +386,10 @@
 \NewEnviron{parse_markdown}{
   \tl_new:N \md_result
   \tl_new:N \md_tokens
-  \tl_gset_rescan:Nnx \md_tokens { \char_set_catcode_letter:n {32} } { \BODY }
+  \tl_gset_rescan:Nnx \md_tokens
+     {
+       \char_set_catcode_letter:n { 32 }% SPACE
+     } { \BODY }
   \exp_args:Nnx \inside_para:nn \md_result {
     \md_tokens
     \relax
@@ -350,6 +400,7 @@
 \NewDocumentEnvironment{markdown}{ }{%
   \obeylines%
   \obeyspaces%
+  \char_set_catcode_letter:N \#%
   \parse_markdown%
 }{%
   \endparse_markdown%
