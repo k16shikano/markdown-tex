@@ -303,10 +303,9 @@
             \exp_args:NNnff \parse_verb_line:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
           }
           {
-            \tl_set:Nx \so_far { #3\car_line }
+            \tl_set:Nx \so_far { #3 \str_head:n { #4 } }
             \exp_args:NNnff \parse_verb_line:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
           }
-          
      }
 }
 
@@ -387,10 +386,23 @@
 \NewEnviron{parse_markdown}{
   \tl_new:N \md_result
   \tl_new:N \md_tokens
-  \tl_gset_rescan:Nnx \md_tokens
+
+  \tl_set_rescan:Nnx \md_tokens
      {
-       \char_set_catcode_letter:n { 32 }% SPACE
+       \char_set_catcode_letter:n {  32 }% SPACE
+       \char_set_catcode_letter:n { 108 }%
+       \char_set_catcode_letter:N \#%
+       \char_set_catcode_letter:N \{%
+       \char_set_catcode_letter:N \}% 
      } { \BODY }
+
+     %%%% this doesn't help because \BODY has been scaned.
+     %  \cs_generate_variant:Nn \tl_replace_all:Nnn { NV }
+     %  \tl_const:Nx \c_backslash_other_tl { \cs_to_str:N \\ }
+     %  
+     %  \tl_set_eq:NN \md_tokens \BODY
+     %  \tl_replace_all:NVn \md_tokens \c_backslash_other_tl { / }
+  
   \exp_args:Nnx \inside_para:nn \md_result {
     \md_tokens
     \relax
