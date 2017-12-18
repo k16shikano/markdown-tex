@@ -7,6 +7,50 @@
 \RequirePackage{environ}
 \RequirePackage{alltt}
 
+\NewEnviron{parse_markdown}{
+  \tl_new:N \md_result
+  \tl_new:N \md_tokens
+
+  \tl_set_rescan:Nnx \md_tokens
+     {
+       \char_set_catcode_letter:n {  32 }% SPACE
+       \char_set_catcode_letter:n { 108 }%
+       \char_set_catcode_letter:N \#%
+       \char_set_catcode_letter:N \{%
+       \char_set_catcode_letter:N \}%
+       \char_set_catcode_letter:N \\%
+     } { \BODY }
+%\md_tokens
+     %%%% this doesn't help because \BODY has been scaned.
+     %  \cs_generate_variant:Nn \tl_replace_all:Nnn { NV }
+     %  \tl_const:Nx \c_backslash_other_tl { \cs_to_str:N \\ }
+     %  
+     %  \tl_set_eq:NN \md_tokens \BODY
+     %  \tl_replace_all:NVn \md_tokens \c_backslash_other_tl { / }
+  
+  \char_set_catcode_escape:N \\%
+  \exp_args:Nnx \inside_para:nn \md_result {
+    \md_tokens
+    \relax
+  }
+  \tl_use:N \md_result
+}
+
+\NewDocumentEnvironment{markdown}{ }{%
+  \obeylines%
+  \obeyspaces%
+  \char_set_catcode_letter:N \#%
+  \parse_markdown%
+}{%
+  \endparse_markdown%
+}
+
+\def\sectionline#1\par{\section{#1}}
+\def\subsectionline#1\par{\subsection{#1}}
+\def\subsubsectionline#1\par{\subsubsection{#1}}
+
+%%% parser
+
 \cs_set_nopar:Npn \exp_args:Nnf { \::n \::f \::: }
 \cs_set_nopar:Npn \exp_args:NNnf { \::N \::n \::f \::: }
 \cs_set_nopar:Npn \exp_args:NNnff { \::N \::n \::f \::f \::: }
@@ -20,7 +64,15 @@
 \regex_new:N \begin_title
 \regex_gset:Nn \begin_title { ^[#] }
 
+\regex_new:N \escape_char
+\regex_gset:Nn \escape_char { ^[p] }
+
 \int_new:N \l_nest_level
+
+\exp_args:NNf \token_new:Nn \bs_letter { \char_generate:nn { 92 } { 11 } }
+\exp_args:NNf \token_new:Nn \sp_letter { \char_generate:nn { 32 } { 11 } }
+\exp_args:NNf \token_new:Nn \lp_letter { \char_generate:nn { 123 } { 11 } }
+\exp_args:NNf \token_new:Nn \rp_letter { \char_generate:nn { 125 } { 11 } }
 
 \cs_new:Npn \inside_para:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
@@ -35,6 +87,7 @@
             \exp_args:Nnx \inside_para:nn #1 { \cdr_line }
           }
           {
+            
             \regex_match:NnTF \begin_title { #2 }
                {
                  \int_set:Nn \l_nest_level { 1 }
@@ -86,12 +139,11 @@
                                          { \l_rest_line }
                                  }
                                  {
-                                   \tl_put_right:Nx #1 { \car_line }
                                    \exp_args:NNnff \parse_to_end_line_with:Nnnn
                                        { \inside_para:nn }
                                        { #1 }
                                        {  }
-                                       { \cdr_line }
+                                       { #2 }
                                  }
                              }
                         }
@@ -211,39 +263,62 @@
           }
      }
      {
-       \tl_if_head_eq_charcode:nNTF { #4 } { ` }
+       \tl_if_head_eq_charcode:nNTF { #4 } { \bs_letter }
           {
             \tl_put_right:Nn #2 { #3 }
-            \exp_args:NNnff \inside_tt:Nnnn #1 #2 { } { \cdr_line }
+            \exp_args:NNnff \inside_cs:Nnnn #1 #2 { } { \cdr_line }
           }
+          
           {
-            \tl_if_head_eq_charcode:nNTF { #4 } { * }
+            \tl_if_head_eq_charcode:nNTF { #4 } { \lp_letter }
                {
-                 \tl_put_right:Nn #2 { #3 }                 
-                 \tl_if_head_eq_charcode:fNTF { \cdr_line } { * }
-                    {
-                      \exp_args:NNnff \inside_bold:Nnnn #1 #2 { } { \exp_args:Nf \tl_tail:N \cdr_line }
-                    }
-                    {
-                      \exp_args:NNnff \inside_emph:Nnnn #1 #2 { } { \cdr_line }
-                    }
+                 \tl_set:Nx \so_far { #3\c_group_begin_token }
+                 \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
                }
                {
-                 \tl_if_head_eq_charcode:nNTF { #4 } { ~ }
+                 \tl_if_head_eq_charcode:nNTF { #4 } { \rp_letter }
                     {
-                      \tl_set:Nx \so_far { #3{~} }
+                      \tl_set:Nx \so_far { #3\c_group_end_token }
                       \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
                     }
-                    {
-                      \tl_set:Nx \so_far { #3\car_line }
-                      \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                    {                      
+                      \tl_if_head_eq_charcode:nNTF { #4 } { ` }
+                         {
+                           \tl_put_right:Nn #2 { #3 }
+                           \exp_args:NNnff \inside_tt:Nnnn #1 #2 { } { \cdr_line }
+                         }
+                         {
+                           \tl_if_head_eq_charcode:nNTF { #4 } { * }
+                              {
+                                \tl_put_right:Nn #2 { #3 }                 
+                                \tl_if_head_eq_charcode:fNTF { \cdr_line } { * }
+                                   {
+                                     \exp_args:NNnff \inside_bold:Nnnn #1 #2 { } { \exp_args:Nf \tl_tail:N \cdr_line }
+                                   }
+                                   {
+                                     \exp_args:NNnff \inside_emph:Nnnn #1 #2 { } { \cdr_line }
+                                   }
+                              }
+                              {
+                                \tl_if_head_eq_charcode:nNTF { #4 } { ~ }
+                                   {
+                                     \tl_set:Nx \so_far { #3{~} }
+                                     \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                                   }
+                                   {
+                                     \tl_set:Nx \so_far { #3\car_line }
+                                     \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+                                   }
+                                   
+                              }
+                         }
                     }
-
                }
           }
      }
 }
 
+          
 \cs_new:Npn \inside_verbatim:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
@@ -337,6 +412,23 @@
 
 %%% inline elements
 
+\cs_new:Npn \inside_cs:Nnnn #1#2#3#4 {
+  \tl_set:Nn \car_line { \tl_head:n { #4 } }
+  \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
+  
+  \tl_if_head_eq_charcode:nNTF { #4 } { \sp_letter }
+     {
+       \tl_put_right:Nn #2 { %\texttt{\bs_letter #3}
+         \cs:w #3 \cs_end:
+       }
+       \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { } { \cdr_line }
+     }
+     {
+       \tl_set:Nx \so_far { #3\car_line }
+       \exp_args:NNnff \inside_cs:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
+     }
+}
+
 \cs_new:Npn \inside_tt:Nnnn #1#2#3#4 {
   \tl_set:Nn \car_line { \tl_head:n { #4 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
@@ -383,44 +475,5 @@
      }
 }
 
-\NewEnviron{parse_markdown}{
-  \tl_new:N \md_result
-  \tl_new:N \md_tokens
-
-  \tl_set_rescan:Nnx \md_tokens
-     {
-       \char_set_catcode_letter:n {  32 }% SPACE
-       \char_set_catcode_letter:n { 108 }%
-       \char_set_catcode_letter:N \#%
-       \char_set_catcode_letter:N \{%
-       \char_set_catcode_letter:N \}% 
-     } { \BODY }
-
-     %%%% this doesn't help because \BODY has been scaned.
-     %  \cs_generate_variant:Nn \tl_replace_all:Nnn { NV }
-     %  \tl_const:Nx \c_backslash_other_tl { \cs_to_str:N \\ }
-     %  
-     %  \tl_set_eq:NN \md_tokens \BODY
-     %  \tl_replace_all:NVn \md_tokens \c_backslash_other_tl { / }
-  
-  \exp_args:Nnx \inside_para:nn \md_result {
-    \md_tokens
-    \relax
-  }
-  \tl_use:N \md_result
-}
-
-\NewDocumentEnvironment{markdown}{ }{%
-  \obeylines%
-  \obeyspaces%
-  \char_set_catcode_letter:N \#%
-  \parse_markdown%
-}{%
-  \endparse_markdown%
-}
-
-\def\sectionline#1\par{\section{#1}}
-\def\subsectionline#1\par{\subsection{#1}}
-\def\subsubsectionline#1\par{\subsubsection{#1}}
 
 
