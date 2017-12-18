@@ -1,4 +1,4 @@
-\documentclass[uplatex]{jsarticle}
+\documentclass{article}
 \usepackage{md}
 
 \begin{document}
@@ -6,21 +6,27 @@
 
 # markdown-tex
 
-markdown processor in TeX.
+markdown processor in \TeX. 
 
 ## supported syntax
 
 So far, you can write normal paragraph, codelist, quoatatio, itemize list, and enumerate list. 
 
-As inline styles, `tt`, *italic*, and **bold** are available.
+As inline styles, `tt`, *italic*, and **bold** are available. You can also put some inline equations like this: $\int_0^1\frac{1}{x}dx = \infty$, although most of TeX macros are invalid.
 
 ## example
 
 Inshort, you can write something like below.
-Below is a `codeline` block.
+Below is a `codeline` block. 
 
     codeline
-      another codenline
+        another codenline
+    a = a + 2
+    printf("Hello World");
+    
+    return true;
+
+Note that you can't use $\backslash$ and parens ($\lbrace,\rbrace$) literally anywhere, and neither is true within codeblocks.
 
 Here is a enumerate list.
 
@@ -42,6 +48,8 @@ And a quotation.
 
 > Quote Somethin
 > Really **Awesome**!
+
+\hfill \today
 
 Here is the end of markdown text.
 
