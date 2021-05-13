@@ -2,7 +2,6 @@
 \ProvidesExplPackage
     {md}{2017/10/10}{0.1}{Markdown in TeX}
 
-\RequirePackage{l3regex}
 \RequirePackage{xparse}
 \RequirePackage{environ}
 \RequirePackage{alltt}
@@ -69,10 +68,10 @@
 
 \int_new:N \l_nest_level
 
-\exp_args:NNf \token_new:Nn \bs_letter { \char_generate:nn { 92 } { 11 } }
-\exp_args:NNf \token_new:Nn \sp_letter { \char_generate:nn { 32 } { 11 } }
-\exp_args:NNf \token_new:Nn \lp_letter { \char_generate:nn { 123 } { 11 } }
-\exp_args:NNf \token_new:Nn \rp_letter { \char_generate:nn { 125 } { 11 } }
+\exp_args:NNf \cs_new_nopar:Nn \bs_letter:N { \char_generate:nn { 92 } { 11 } }
+\exp_args:NNf \cs_new_nopar:Nn \sp_letter:N { \char_generate:nn { 32 } { 11 } }
+\exp_args:NNf \cs_new_nopar:Nn \lp_letter:N { \char_generate:nn { 123 } { 11 } }
+\exp_args:NNf \cs_new_nopar:Nn \rp_letter:N { \char_generate:nn { 125 } { 11 } }
 
 \cs_new:Npn \inside_para:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
@@ -152,14 +151,10 @@
           }
      }
 }
-
-
 \cs_new:Npn \inside_title:Nnn #1#2#3 {
   % #1: nest level
   % #2: result
-
   \tl_set:Nn \cdr_line { \tl_tail:n { #3 } }
-
   \regex_match:NnTF \begin_title { #3 }
      {
        \int_incr:N #1
@@ -179,17 +174,14 @@
                { #3 }
      }
 }
-
 \cs_new:Npn \end_of_title:nn #1#2 {
   \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
   \tl_put_right:Nn #1 { \par }
   \exp_args:Nnx \inside_para:nn { #1 } { \cdr_line }
 }
-
 \cs_new:Npn \inside_itemize:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
-
   \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
      { }
      { \tl_if_head_eq_charcode:nNTF { #2 } { * }
@@ -209,11 +201,9 @@
        }
      }
 }
-
 \cs_new:Npn \inside_enumerate:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
-
   \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
      { }
      {
@@ -241,7 +231,6 @@
              }
      }
 }
-
 \cs_new:Npn \parse_to_end_line_with:Nnnn #1#2#3#4 {
   % #1: processor for the next line
   % #2: token list of parsed tokens
@@ -249,7 +238,6 @@
   % #4: input stream
   \tl_set:Nn \car_line { \tl_head:n { #4 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
-
   \tl_if_head_eq_meaning:nNTF { #4 } { \par }
      {
        \tl_if_empty:nTF { #3 }
@@ -263,20 +251,20 @@
           }
      }
      {
-       \tl_if_head_eq_charcode:nNTF { #4 } { \bs_letter }
+       \tl_if_head_eq_charcode:nNTF { #4 } { \bs_letter:N }
           {
             \tl_put_right:Nn #2 { #3 }
             \exp_args:NNnff \inside_cs:Nnnn #1 #2 { } { \cdr_line }
           }
           
           {
-            \tl_if_head_eq_charcode:nNTF { #4 } { \lp_letter }
+            \tl_if_head_eq_charcode:nNTF { #4 } { \lp_letter:N }
                {
                  \tl_set:Nx \so_far { #3\c_group_begin_token }
                  \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
                }
                {
-                 \tl_if_head_eq_charcode:nNTF { #4 } { \rp_letter }
+                 \tl_if_head_eq_charcode:nNTF { #4 } { \rp_letter:N }
                     {
                       \tl_set:Nx \so_far { #3\c_group_end_token }
                       \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
@@ -317,12 +305,10 @@
           }
      }
 }
-
           
 \cs_new:Npn \inside_verbatim:nn #1#2 {
   \tl_set:Nn \car_line { \tl_head:n { #2 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #2 } }
-
   \tl_if_head_eq_meaning:nNTF { #2 } { \relax }
      { }
      {
@@ -416,9 +402,9 @@
   \tl_set:Nn \car_line { \tl_head:n { #4 } }
   \tl_set:Nn \cdr_line { \tl_tail:n { #4 } }
   
-  \tl_if_head_eq_charcode:nNTF { #4 } { \sp_letter }
+  \tl_if_head_eq_charcode:nNTF { #4 } { \sp_letter:N }
      {
-       \tl_put_right:Nn #2 { %\texttt{\bs_letter #3}
+       \tl_put_right:Nn #2 { %\texttt{\bs_letter:N #3}
          \cs:w #3 \cs_end:
        }
        \exp_args:NNnff \parse_to_end_line_with:Nnnn { #1 } { #2 } { } { \cdr_line }
@@ -474,6 +460,3 @@
        \exp_args:NNnff \inside_bold:Nnnn { #1 } { #2 } { \so_far } { \cdr_line }
      }
 }
-
-
-
